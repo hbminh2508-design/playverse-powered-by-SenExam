@@ -65,7 +65,7 @@ export default function InvitePage({ params }: InvitePageProps) {
 
         <div className="mt-4">
           <Link
-            href="/channels/@me"
+            href="/channels/me"
             className="text-xs text-[#00a8fc] hover:underline"
           >
             Đã có tài khoản? Vào ứng dụng ngay

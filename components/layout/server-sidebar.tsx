@@ -16,10 +16,10 @@ export function ServerSidebar({ servers, onOpenCreateServer }: ServerSidebarProp
   const pathname = usePathname();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
-  const isMeActive = pathname?.startsWith('/channels/@me');
+  const isMeActive = pathname?.startsWith('/channels/me') || pathname?.startsWith('/channels/@me');
 
   return (
-    <nav className="fixed left-0 top-0 bottom-0 w-[72px] bg-[#1e1f22] flex flex-col items-center py-3 gap-2 z-40 select-none">
+    <nav className="fixed left-0 top-0 bottom-0 w-[72px] bg-[#1e1f22] flex flex-col items-center py-3 gap-2 z-40 select-none overflow-x-hidden">
       {/* Home / Direct Messages Button */}
       <div className="relative group flex items-center justify-center w-full">
         {/* Active/Hover Pill */}
@@ -27,14 +27,14 @@ export function ServerSidebar({ servers, onOpenCreateServer }: ServerSidebarProp
           className={`absolute left-0 w-1 bg-white rounded-r-full transition-all duration-200 ${
             isMeActive
               ? 'h-10'
-              : hoveredId === '@me'
+              : hoveredId === 'me'
               ? 'h-5'
               : 'h-0'
           }`}
         />
         <Link
-          href="/channels/@me"
-          onMouseEnter={() => setHoveredId('@me')}
+          href="/channels/me"
+          onMouseEnter={() => setHoveredId('me')}
           onMouseLeave={() => setHoveredId(null)}
           className={`relative flex items-center justify-center w-12 h-12 rounded-[24px] transition-all duration-200 group-hover:rounded-[16px] ${
             isMeActive

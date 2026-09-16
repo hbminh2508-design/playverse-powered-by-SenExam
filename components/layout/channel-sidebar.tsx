@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { Server, Channel } from '@/types/database';
 import { useAuth } from '@/lib/context/auth-context';
+import { VoiceStatusBar } from '@/components/voice/voice-status-bar';
 import {
   Hash,
   Volume2,
@@ -22,18 +23,22 @@ interface ChannelSidebarProps {
   server: Server;
   channels: Channel[];
   activeChannelId: string;
+  activeVoiceChannel?: Channel | null;
   onOpenCreateChannel: () => void;
   onOpenInvite: () => void;
   onOpenUserSettings: () => void;
+  onDisconnectVoice?: () => void;
 }
 
 export function ChannelSidebar({
   server,
   channels,
   activeChannelId,
+  activeVoiceChannel,
   onOpenCreateChannel,
   onOpenInvite,
   onOpenUserSettings,
+  onDisconnectVoice,
 }: ChannelSidebarProps) {
   const { profile } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -51,9 +56,9 @@ export function ChannelSidebar({
   };
 
   return (
-    <aside className="w-60 bg-[#2b2d31] flex flex-col h-full border-r border-[#1f2023]/40 select-none">
+    <aside className="w-60 bg-[#2b2d31] flex flex-col h-full border-r border-[#1f2023]/40 select-none overflow-x-hidden">
       {/* Server Header Dropdown */}
-      <div className="relative">
+      <div className="relative shrink-0">
         <button
           onClick={() => setDropdownOpen(!dropdownOpen)}
           className="w-full h-12 px-4 flex items-center justify-between font-semibold text-white border-b border-[#1f2023] hover:bg-[#35373c] transition cursor-pointer"
@@ -99,8 +104,8 @@ export function ChannelSidebar({
         )}
       </div>
 
-      {/* Channels List */}
-      <div className="flex-1 overflow-y-auto px-2 py-3 space-y-4">
+      {/* Channels List - Cuộn dọc mượt mà, triệt tiêu hoàn toàn cuộn ngang */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-3 space-y-4">
         {/* Text Channels Category */}
         <div>
           <div className="flex items-center justify-between px-2 text-[11px] font-bold text-[#949ba4] tracking-wider uppercase group">
@@ -108,7 +113,7 @@ export function ChannelSidebar({
             <button
               onClick={onOpenCreateChannel}
               className="opacity-0 group-hover:opacity-100 hover:text-white transition cursor-pointer"
-              title="Tạo kênh"
+              title="Tạo kênh văn bản"
             >
               <Plus size={14} />
             </button>
@@ -137,7 +142,7 @@ export function ChannelSidebar({
         {/* Voice Channels Category */}
         <div>
           <div className="flex items-center justify-between px-2 text-[11px] font-bold text-[#949ba4] tracking-wider uppercase group">
-            <span>Kênh Đàm Thoại</span>
+            <span>Kênh Đàm Thoại & Video</span>
             <button
               onClick={onOpenCreateChannel}
               className="opacity-0 group-hover:opacity-100 hover:text-white transition cursor-pointer"
@@ -150,26 +155,35 @@ export function ChannelSidebar({
             {voiceChannels.map((ch) => {
               const isActive = ch.id === activeChannelId;
               return (
-                <div
+                <Link
                   key={ch.id}
-                  onClick={() => alert(`Đã kết nối vào kênh thoại: ${ch.name}`)}
+                  href={`/channels/${server.id}/${ch.id}`}
                   className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-sm cursor-pointer transition ${
                     isActive
-                      ? 'bg-[#404249] text-white font-medium'
+                      ? 'bg-[#404249] text-[#23a55a] font-medium'
                       : 'text-[#949ba4] hover:bg-[#35373c] hover:text-[#dbdee1]'
                   }`}
                 >
-                  <Volume2 size={18} className="text-[#80848e] shrink-0" />
+                  <Volume2 size={18} className={`shrink-0 ${isActive ? 'text-[#23a55a]' : 'text-[#80848e]'}`} />
                   <span className="truncate">{ch.name}</span>
-                </div>
+                </Link>
               );
             })}
           </div>
         </div>
       </div>
 
+      {/* Voice Connection Status Bar (Hiển thị khi đang trong kênh thoại) */}
+      {activeVoiceChannel && onDisconnectVoice && (
+        <VoiceStatusBar
+          channel={activeVoiceChannel}
+          server={server}
+          onDisconnect={onDisconnectVoice}
+        />
+      )}
+
       {/* User Status Bar Bottom */}
-      <div className="h-14 bg-[#232428] px-2 flex items-center justify-between gap-1 select-none">
+      <div className="h-14 bg-[#232428] px-2 flex items-center justify-between gap-1 select-none shrink-0 border-t border-[#1f2023]/60">
         <div
           onClick={onOpenUserSettings}
           className="flex items-center gap-2 p-1 rounded-md hover:bg-[#35373c] transition cursor-pointer flex-1 min-w-0"
@@ -199,7 +213,7 @@ export function ChannelSidebar({
         </div>
 
         {/* Action Buttons: Mic, Headset, Settings */}
-        <div className="flex items-center gap-0.5 text-[#b5bac1]">
+        <div className="flex items-center gap-0.5 text-[#b5bac1] shrink-0">
           <button
             onClick={() => setIsMuted(!isMuted)}
             className={`p-1.5 rounded hover:bg-[#35373c] hover:text-white transition cursor-pointer ${

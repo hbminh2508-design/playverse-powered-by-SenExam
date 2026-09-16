@@ -27,15 +27,20 @@
   }
 }
 
-/* Custom Discord Scrollbar */
+/* Custom Discord Scrollbar - Loại bỏ hoàn toàn nút trượt mũi tên < > trên Windows */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
+::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
 ::-webkit-scrollbar-track {
-  background-color: #2b2d31;
-  border-radius: 4px;
+  background-color: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -45,6 +50,15 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background-color: #111214;
+}
+
+/* Ẩn thanh cuộn nhưng vẫn cuộn được khi cần */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* Discord tooltip animation */

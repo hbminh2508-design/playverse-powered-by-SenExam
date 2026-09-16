@@ -31,7 +31,7 @@ export default function LoginPage() {
       if (!isConfigured) {
         // Chưa điền Supabase credentials -> tự động chuyển sang chế độ Demo
         setDemoMode(true);
-        router.push('/channels/@me');
+        router.push('/channels/me');
         return;
       }
 
@@ -50,7 +50,7 @@ export default function LoginPage() {
         if (signUpError) throw signUpError;
 
         if (data.session) {
-          router.push('/channels/@me');
+          router.push('/channels/me');
         } else {
           setSuccess('Đăng ký thành công! Vui lòng kiểm tra hộp thư email để kích hoạt tài khoản.');
         }
@@ -61,7 +61,7 @@ export default function LoginPage() {
         });
 
         if (signInError) throw signInError;
-        router.push('/channels/@me');
+        router.push('/channels/me');
       }
     } catch (err: any) {
       setError(err.message || 'Đã có lỗi xảy ra. Vui lòng thử lại.');
@@ -72,7 +72,7 @@ export default function LoginPage() {
 
   const handleDemoMode = () => {
     setDemoMode(true);
-    router.push('/channels/@me');
+    router.push('/channels/me');
   };
 
   return (

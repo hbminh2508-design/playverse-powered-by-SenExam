@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation';
 import { ChannelSidebar } from '@/components/layout/channel-sidebar';
 import { ChatArea } from '@/components/layout/chat-area';
 import { MemberSidebar } from '@/components/layout/member-sidebar';
+import { VoiceRoom } from '@/components/voice/voice-room';
 import { CreateChannelModal } from '@/components/modals/create-channel-modal';
 import { InviteModal } from '@/components/modals/invite-modal';
 import { UserSettingsModal } from '@/components/modals/user-settings-modal';
 import { Server, Channel, Message, ServerMember, ChannelType } from '@/types/database';
 import { useAuth } from '@/lib/context/auth-context';
 import { createClient } from '@/lib/supabase/client';
+import { useWebRTC } from '@/hooks/use-webrtc';
 import {
   DEMO_SERVERS,
   DEMO_CHANNELS,
@@ -47,6 +49,10 @@ export default function ServerChannelPage({ params }: PageProps) {
 
   const supabase = createClient();
 
+  // WebRTC Hook for Voice & Video
+  const isVoiceChannel = activeChannel?.type === 'voice';
+  const webrtc = useWebRTC(isVoiceChannel ? activeChannel.id : null);
+
   // 1. Load Server & Channels
   useEffect(() => {
     const loadServerData = async () => {
@@ -63,7 +69,6 @@ export default function ServerChannelPage({ params }: PageProps) {
       }
 
       if (!s) {
-        // Fallback default server
         s = DEMO_SERVERS[0];
       }
       setCurrentServer(s);
@@ -110,9 +115,9 @@ export default function ServerChannelPage({ params }: PageProps) {
     loadServerData();
   }, [serverId, channelId, isConfigured]);
 
-  // 2. Load Messages for Active Channel & Subscribe Realtime
+  // 2. Load Messages for Active Channel & Subscribe Realtime (if text channel)
   useEffect(() => {
-    if (!activeChannel) return;
+    if (!activeChannel || activeChannel.type !== 'text') return;
 
     let initialMessages = DEMO_MESSAGES[activeChannel.id] || [];
 
@@ -134,7 +139,7 @@ export default function ServerChannelPage({ params }: PageProps) {
 
     fetchMessages();
 
-    // Setup Supabase Realtime Subscription
+    // Setup Supabase Realtime Subscription for chat
     if (isConfigured) {
       const channelSub = supabase
         .channel(`chat:${activeChannel.id}`)
@@ -147,7 +152,6 @@ export default function ServerChannelPage({ params }: PageProps) {
             filter: `channel_id=eq.${activeChannel.id}`,
           },
           async (payload) => {
-            // Fetch profile for the new message
             const { data: userProfile } = await supabase
               .from('profiles')
               .select('*')
@@ -246,6 +250,15 @@ export default function ServerChannelPage({ params }: PageProps) {
     router.push(`/channels/${currentServer.id}/${newChan.id}`);
   };
 
+  const handleDisconnectVoice = () => {
+    webrtc.disconnect();
+    // Chuyển sang kênh chat text đầu tiên
+    const defaultTextChannel = channels.find((c) => c.type === 'text') || channels[0];
+    if (defaultTextChannel && currentServer) {
+      router.push(`/channels/${currentServer.id}/${defaultTextChannel.id}`);
+    }
+  };
+
   if (!currentServer || !activeChannel) {
     return (
       <div className="flex-1 flex items-center justify-center bg-[#313338] text-[#949ba4]">
@@ -261,19 +274,36 @@ export default function ServerChannelPage({ params }: PageProps) {
         server={currentServer}
         channels={channels}
         activeChannelId={activeChannel.id}
+        activeVoiceChannel={isVoiceChannel ? activeChannel : null}
         onOpenCreateChannel={() => setCreateChannelOpen(true)}
         onOpenInvite={() => setInviteOpen(true)}
         onOpenUserSettings={() => setUserSettingsOpen(true)}
+        onDisconnectVoice={handleDisconnectVoice}
       />
 
-      {/* 2. Main Chat Area */}
-      <ChatArea
-        channel={activeChannel}
-        messages={messages}
-        onSendMessage={handleSendMessage}
-        showMemberList={showMemberList}
-        onToggleMemberList={() => setShowMemberList(!showMemberList)}
-      />
+      {/* 2. Main Stage: Voice & Video Room HOẶC Chat Area */}
+      {isVoiceChannel ? (
+        <VoiceRoom
+          channel={activeChannel}
+          participants={webrtc.participants}
+          localStream={webrtc.localStream}
+          isMuted={webrtc.isMuted}
+          isVideoOn={webrtc.isVideoOn}
+          isScreenSharing={webrtc.isScreenSharing}
+          onToggleMute={webrtc.toggleMute}
+          onToggleVideo={webrtc.toggleVideo}
+          onToggleScreenShare={webrtc.toggleScreenShare}
+          onDisconnect={handleDisconnectVoice}
+        />
+      ) : (
+        <ChatArea
+          channel={activeChannel}
+          messages={messages}
+          onSendMessage={handleSendMessage}
+          showMemberList={showMemberList}
+          onToggleMemberList={() => setShowMemberList(!showMemberList)}
+        />
+      )}
 
       {/* 3. Member Sidebar Right (240px) */}
       {showMemberList && <MemberSidebar members={members} />}

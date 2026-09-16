@@ -12,7 +12,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!loading && (user || isDemoMode)) {
-      router.push('/channels/@me');
+      router.push('/channels/me');
     }
   }, [user, isDemoMode, loading, router]);
 
@@ -56,7 +56,7 @@ export default function HomePage() {
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <Link
-            href="/channels/@me"
+            href="/channels/me"
             className="w-full sm:w-auto bg-[#5865f2] hover:bg-[#4752c4] text-white font-semibold px-8 py-3.5 rounded-full transition shadow-lg text-center"
           >
             Vào Ứng Dụng Ngay (Web App)
