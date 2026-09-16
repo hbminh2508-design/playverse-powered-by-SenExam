@@ -4,12 +4,13 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth-context';
 import { createClient } from '@/lib/supabase/client';
-import { Sparkles, AlertCircle, CheckCircle } from 'lucide-react';
+import { PlayVerseLogo } from '@/components/ui/logo';
+import { AlertCircle, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { isConfigured, setDemoMode } = useAuth();
+  const { isConfigured } = useAuth();
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -29,9 +30,7 @@ export default function LoginPage() {
 
     try {
       if (!isConfigured) {
-        // Chưa điền Supabase credentials -> tự động chuyển sang chế độ Demo
-        setDemoMode(true);
-        router.push('/channels/me');
+        setError('Hệ thống chưa được kết nối với Supabase API. Vui lòng thêm NEXT_PUBLIC_SUPABASE_URL và NEXT_PUBLIC_SUPABASE_ANON_KEY vào Vercel / .env.local.');
         return;
       }
 
@@ -70,11 +69,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleDemoMode = () => {
-    setDemoMode(true);
-    router.push('/channels/me');
-  };
-
   return (
     <div className="min-h-screen bg-[#1e1f22] flex items-center justify-center p-4 relative overflow-hidden">
       {/* Background Graphic Blobs */}
@@ -82,31 +76,31 @@ export default function LoginPage() {
       <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-[#23a55a]/15 rounded-full blur-3xl pointer-events-none" />
 
       {/* Main Login Card */}
-      <div className="w-full max-w-[480px] bg-[#313338] rounded-lg p-8 shadow-2xl border border-[#232428] relative z-10">
-        <div className="text-center mb-6">
-          <div className="w-12 h-12 bg-[#5865f2] rounded-2xl flex items-center justify-center text-white font-extrabold text-2xl mx-auto mb-3 shadow-md">
-            PV
-          </div>
+      <div className="w-full max-w-[480px] bg-[#313338] rounded-2xl p-8 shadow-2xl border border-[#232428] relative z-10">
+        <div className="text-center mb-6 flex flex-col items-center">
+          <Link href="/" className="mb-4 inline-block hover:scale-105 transition">
+            <PlayVerseLogo size="lg" />
+          </Link>
           <h1 className="text-2xl font-bold text-white mb-1">
-            {isRegister ? 'Tạo một tài khoản' : 'Chào mừng trở lại!'}
+            {isRegister ? 'Tạo tài khoản PlayVerse' : 'Chào mừng trở lại!'}
           </h1>
           <p className="text-sm text-[#949ba4]">
             {isRegister
-              ? 'Rất vui được đón bạn tham gia cùng PlayVerse'
-              : 'Chúng tôi rất vui mừng được gặp lại bạn!'}
+              ? 'Tham gia máy chủ cộng đồng tự chủ 100% của riêng bạn'
+              : 'Đăng nhập vào tài khoản PlayVerse chính thức'}
           </p>
         </div>
 
         {/* Status Notification */}
         {error && (
-          <div className="mb-4 p-3 rounded bg-[#f23f43]/15 border border-[#f23f43]/40 text-[#f23f43] text-xs flex items-center gap-2">
+          <div className="mb-4 p-3 rounded-xl bg-[#f23f43]/15 border border-[#f23f43]/40 text-[#f23f43] text-xs flex items-center gap-2">
             <AlertCircle size={16} className="shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
         {success && (
-          <div className="mb-4 p-3 rounded bg-[#23a55a]/15 border border-[#23a55a]/40 text-[#23a55a] text-xs flex items-center gap-2">
+          <div className="mb-4 p-3 rounded-xl bg-[#23a55a]/15 border border-[#23a55a]/40 text-[#23a55a] text-xs flex items-center gap-2">
             <CheckCircle size={16} className="shrink-0" />
             <span>{success}</span>
           </div>
@@ -124,7 +118,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="tenban@example.com"
-              className="w-full bg-[#1e1f22] text-white text-sm rounded p-2.5 outline-none focus:ring-2 focus:ring-[#5865f2] border border-[#232428]"
+              className="w-full bg-[#1e1f22] text-white text-sm rounded-lg p-3 outline-none focus:ring-2 focus:ring-[#5865f2] border border-[#232428]"
             />
           </div>
 
@@ -140,7 +134,7 @@ export default function LoginPage() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="playverse_user"
-                  className="w-full bg-[#1e1f22] text-white text-sm rounded p-2.5 outline-none focus:ring-2 focus:ring-[#5865f2] border border-[#232428]"
+                  className="w-full bg-[#1e1f22] text-white text-sm rounded-lg p-3 outline-none focus:ring-2 focus:ring-[#5865f2] border border-[#232428]"
                 />
               </div>
 
@@ -153,7 +147,7 @@ export default function LoginPage() {
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder="Người Dùng Mới"
-                  className="w-full bg-[#1e1f22] text-white text-sm rounded p-2.5 outline-none focus:ring-2 focus:ring-[#5865f2] border border-[#232428]"
+                  className="w-full bg-[#1e1f22] text-white text-sm rounded-lg p-3 outline-none focus:ring-2 focus:ring-[#5865f2] border border-[#232428]"
                 />
               </div>
             </>
@@ -169,61 +163,52 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full bg-[#1e1f22] text-white text-sm rounded p-2.5 outline-none focus:ring-2 focus:ring-[#5865f2] border border-[#232428]"
+              className="w-full bg-[#1e1f22] text-white text-sm rounded-lg p-3 outline-none focus:ring-2 focus:ring-[#5865f2] border border-[#232428]"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#5865f2] hover:bg-[#4752c4] text-white font-medium py-3 rounded transition shadow cursor-pointer disabled:opacity-50"
+            className="w-full bg-[#5865f2] hover:bg-[#4752c4] text-white font-bold py-3.5 rounded-xl transition shadow cursor-pointer disabled:opacity-50 text-sm mt-2"
           >
             {loading
               ? 'Đang xử lý...'
               : isRegister
-              ? 'Tiếp tục đăng ký'
-              : 'Đăng nhập'}
+              ? 'Đăng Ký Tài Khoản'
+              : 'Đăng Nhập'}
           </button>
         </form>
 
         {/* Toggle Register / Login */}
-        <div className="mt-4 text-xs text-[#949ba4]">
+        <div className="mt-5 text-xs text-[#949ba4] text-center">
           {isRegister ? (
             <span>
               Đã có tài khoản?{' '}
               <button
                 onClick={() => setIsRegister(false)}
-                className="text-[#00a8fc] hover:underline cursor-pointer"
+                className="text-[#5865f2] hover:underline font-semibold cursor-pointer ml-1"
               >
                 Đăng nhập ngay
               </button>
             </span>
           ) : (
             <span>
-              Cần một tài khoản?{' '}
+              Chưa có tài khoản?{' '}
               <button
                 onClick={() => setIsRegister(true)}
-                className="text-[#00a8fc] hover:underline cursor-pointer"
+                className="text-[#5865f2] hover:underline font-semibold cursor-pointer ml-1"
               >
-                Đăng ký
+                Đăng ký tài khoản mới
               </button>
             </span>
           )}
         </div>
 
-        {/* Fast Demo Mode Button */}
-        <div className="mt-6 pt-6 border-t border-[#3f4147]">
-          <button
-            type="button"
-            onClick={handleDemoMode}
-            className="w-full bg-[#23a55a] hover:bg-[#1f9250] text-white font-medium py-2.5 rounded transition flex items-center justify-center gap-2 cursor-pointer text-sm shadow"
-          >
-            <Sparkles size={16} />
-            <span>Trải nghiệm ngay (Chế độ Demo)</span>
-          </button>
-          <p className="text-[11px] text-center text-[#949ba4] mt-2">
-            Xem ngay giao diện Discord và trải nghiệm chat tức thì mà không cần thiết lập tài khoản
-          </p>
+        <div className="mt-4 pt-4 border-t border-[#3f4147]/50 text-center">
+          <Link href="/" className="text-xs text-[#949ba4] hover:text-white transition">
+            ← Quay lại Trang Chủ Dashboard
+          </Link>
         </div>
       </div>
     </div>

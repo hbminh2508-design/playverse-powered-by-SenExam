@@ -9,16 +9,11 @@ import { VoiceRoom } from '@/components/voice/voice-room';
 import { CreateChannelModal } from '@/components/modals/create-channel-modal';
 import { InviteModal } from '@/components/modals/invite-modal';
 import { UserSettingsModal } from '@/components/modals/user-settings-modal';
+import { ServerSettingsModal } from '@/components/modals/server-settings-modal';
 import { Server, Channel, Message, ServerMember, ChannelType } from '@/types/database';
 import { useAuth } from '@/lib/context/auth-context';
 import { createClient } from '@/lib/supabase/client';
 import { useWebRTC } from '@/hooks/use-webrtc';
-import {
-  DEMO_SERVERS,
-  DEMO_CHANNELS,
-  DEMO_MEMBERS,
-  DEMO_MESSAGES,
-} from '@/lib/demo-data';
 import { Compass, Hash } from 'lucide-react';
 
 interface PageProps {
@@ -32,7 +27,7 @@ export default function ServerChannelPage({ params }: PageProps) {
   const resolvedParams = use(params);
   const { serverId, channelId } = resolvedParams;
 
-  const { user, profile, isConfigured, isDemoMode } = useAuth();
+  const { user, profile, isConfigured } = useAuth();
   const router = useRouter();
 
   // State
@@ -48,6 +43,7 @@ export default function ServerChannelPage({ params }: PageProps) {
   const [createChannelOpen, setCreateChannelOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [userSettingsOpen, setUserSettingsOpen] = useState(false);
+  const [serverSettingsOpen, setServerSettingsOpen] = useState(false);
 
   const supabase = createClient();
 
@@ -55,224 +51,156 @@ export default function ServerChannelPage({ params }: PageProps) {
   const isVoiceChannel = activeChannel?.type === 'voice';
   const webrtc = useWebRTC(isVoiceChannel ? activeChannel.id : null);
 
-  // 1. Load Server & Channels
-  useEffect(() => {
-    const loadServerData = async () => {
-      setLoadingServer(true);
+  // 1. Fetch Server, Channels, and Members from Supabase
+  const fetchServerData = async () => {
+    if (!isConfigured || !user) {
+      setLoadingServer(false);
+      return;
+    }
 
-      // Chế độ Demo
-      if (isDemoMode) {
-        let s = DEMO_SERVERS.find((srv) => srv.id === serverId) || DEMO_SERVERS[0];
-        setCurrentServer(s);
-        let chs = DEMO_CHANNELS[serverId] || DEMO_CHANNELS['server-playverse'] || [];
-        setChannels(chs);
-        let active = chs.find((c) => c.id === channelId) || chs.find((c) => c.type === 'text') || chs[0];
-        setActiveChannel(active || null);
-        let mems = DEMO_MEMBERS[serverId] || DEMO_MEMBERS['server-playverse'] || [];
-        setMembers(mems);
+    try {
+      // A. Máy chủ
+      const { data: serverData, error: serverErr } = await supabase
+        .from('servers')
+        .select('*')
+        .eq('id', serverId)
+        .single();
+
+      if (serverErr || !serverData) {
+        setCurrentServer(null);
+        setChannels([]);
+        setActiveChannel(null);
+        setMembers([]);
         setLoadingServer(false);
         return;
       }
 
-      // CHẾ ĐỘ THẬT (REAL SUPABASE): 100% DỮ LIỆU THẬT, KHÔNG DÙNG BẤT KỲ DEMO NÀO
-      if (isConfigured && user) {
-        try {
-          // A. Tìm máy chủ
-          const { data: serverData, error: serverErr } = await supabase
-            .from('servers')
-            .select('*')
-            .eq('id', serverId)
-            .single();
+      setCurrentServer(serverData as Server);
 
-          if (serverErr || !serverData) {
-            setCurrentServer(null);
-            setChannels([]);
-            setActiveChannel(null);
-            setMembers([]);
-            setLoadingServer(false);
-            return;
-          }
+      // B. Danh sách Kênh
+      const { data: channelsData } = await supabase
+        .from('channels')
+        .select('*')
+        .eq('server_id', serverId)
+        .order('created_at', { ascending: true });
 
-          setCurrentServer(serverData as Server);
+      const realChannels = (channelsData || []) as Channel[];
+      setChannels(realChannels);
 
-          // B. Tải các kênh thật của server này
-          const { data: channelsData } = await supabase
-            .from('channels')
-            .select('*')
-            .eq('server_id', serverId)
-            .order('created_at', { ascending: true });
-
-          const realChannels = (channelsData || []) as Channel[];
-          setChannels(realChannels);
-
-          let active = realChannels.find((c) => c.id === channelId);
-          if (!active) {
-            active = realChannels.find((c) => c.type === 'text') || realChannels[0] || null;
-          }
-          setActiveChannel(active);
-
-          // C. Tải danh sách thành viên thật của server này
-          const { data: membersData } = await supabase
-            .from('server_members')
-            .select('*, profile:profiles(*)')
-            .eq('server_id', serverId);
-
-          setMembers((membersData || []) as ServerMember[]);
-        } catch (err) {
-          console.error('Lỗi tải dữ liệu máy chủ:', err);
-        } finally {
-          setLoadingServer(false);
-        }
-        return;
+      let active = realChannels.find((c) => c.id === channelId);
+      if (!active) {
+        active = realChannels.find((c) => c.type === 'text') || realChannels[0] || null;
       }
+      setActiveChannel(active);
 
+      // C. Danh sách Thành viên
+      const { data: membersData } = await supabase
+        .from('server_members')
+        .select('*, profile:profiles(*)')
+        .eq('server_id', serverId);
+
+      setMembers((membersData || []) as ServerMember[]);
+    } catch (err) {
+      console.error('Lỗi tải dữ liệu máy chủ:', err);
+    } finally {
       setLoadingServer(false);
-    };
+    }
+  };
 
-    loadServerData();
-  }, [serverId, channelId, isConfigured, isDemoMode, user]);
-
-  // 2. Load Messages for Active Channel & Subscribe Realtime (if text channel)
   useEffect(() => {
-    if (!activeChannel || activeChannel.type !== 'text') return;
+    fetchServerData();
+  }, [serverId, channelId, isConfigured, user]);
+
+  // 2. Fetch Messages and subscribe Realtime for Active Channel
+  useEffect(() => {
+    if (!activeChannel || activeChannel.type !== 'text' || !isConfigured || !user) return;
 
     const fetchMessages = async () => {
-      // Chế độ Demo
-      if (isDemoMode) {
-        let initialMessages = DEMO_MESSAGES[activeChannel.id] || [];
-        setMessages(initialMessages);
-        return;
-      }
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*, profile:profiles(*)')
+        .eq('channel_id', activeChannel.id)
+        .order('created_at', { ascending: true });
 
-      // CHẾ ĐỘ THẬT: CHỈ LẤY TIN NHẮN TỪ SUPABASE
-      if (isConfigured && user) {
-        const { data, error } = await supabase
-          .from('messages')
-          .select('*, profile:profiles(*)')
-          .eq('channel_id', activeChannel.id)
-          .order('created_at', { ascending: true });
-
-        if (!error && data) {
-          setMessages(data as Message[]);
-        } else {
-          setMessages([]);
-        }
+      if (!error && data) {
+        setMessages(data as Message[]);
+      } else {
+        setMessages([]);
       }
     };
 
     fetchMessages();
 
-    // Setup Supabase Realtime Subscription for chat
-    if (isConfigured && !isDemoMode) {
-      const channelSub = supabase
-        .channel(`chat:${activeChannel.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'messages',
-            filter: `channel_id=eq.${activeChannel.id}`,
-          },
-          async (payload) => {
-            const { data: userProfile } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', payload.new.profile_id)
-              .single();
+    // Supabase Realtime Subscription
+    const channelSub = supabase
+      .channel(`chat:${activeChannel.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `channel_id=eq.${activeChannel.id}`,
+        },
+        async (payload) => {
+          const { data: userProfile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', payload.new.profile_id)
+            .single();
 
-            const newMsg: Message = {
-              ...(payload.new as Message),
-              profile: userProfile || undefined,
-            };
+          const newMsg: Message = {
+            ...(payload.new as Message),
+            profile: userProfile || undefined,
+          };
 
-            setMessages((prev) => [...prev, newMsg]);
-          }
-        )
-        .subscribe();
+          setMessages((prev) => [...prev, newMsg]);
+        }
+      )
+      .subscribe();
 
-      return () => {
-        supabase.removeChannel(channelSub);
-      };
-    }
-  }, [activeChannel, isConfigured, isDemoMode, user]);
+    return () => {
+      supabase.removeChannel(channelSub);
+    };
+  }, [activeChannel, isConfigured, user]);
 
   // 3. Action Handlers
   const handleSendMessage = async (content: string, attachments: any[] = []) => {
-    if (!activeChannel || !profile) return;
+    if (!activeChannel || !profile || !isConfigured || !user) return;
 
-    if (isConfigured && user && !isDemoMode) {
-      try {
-        await supabase.from('messages').insert({
-          channel_id: activeChannel.id,
-          profile_id: user.id,
-          content,
-          attachments,
-        });
-        return;
-      } catch (err) {
-        console.error('Lỗi gửi tin nhắn Supabase:', err);
-      }
-    }
-
-    // Demo Mode: Local update
-    if (isDemoMode) {
-      const newMessage: Message = {
-        id: `msg-${Date.now()}`,
+    try {
+      await supabase.from('messages').insert({
         channel_id: activeChannel.id,
-        profile_id: profile.id,
+        profile_id: user.id,
         content,
         attachments,
-        reply_to_id: null,
-        is_pinned: false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        profile: profile,
-      };
-      setMessages((prev) => [...prev, newMessage]);
+      });
+    } catch (err) {
+      console.error('Lỗi gửi tin nhắn Supabase:', err);
     }
   };
 
   const handleCreateChannel = async (name: string, type: ChannelType, topic?: string) => {
-    if (!currentServer) return;
+    if (!currentServer || !isConfigured || !user) return;
 
-    if (isConfigured && user && !isDemoMode) {
-      try {
-        const { data, error } = await supabase
-          .from('channels')
-          .insert({
-            server_id: currentServer.id,
-            name,
-            type,
-            topic: topic || null,
-          })
-          .select()
-          .single();
+    try {
+      const { data, error } = await supabase
+        .from('channels')
+        .insert({
+          server_id: currentServer.id,
+          name,
+          type,
+          topic: topic || null,
+        })
+        .select()
+        .single();
 
-        if (!error && data) {
-          setChannels((prev) => [...prev, data as Channel]);
-          router.push(`/channels/${currentServer.id}/${data.id}`);
-          return;
-        }
-      } catch (err) {
-        console.error('Lỗi tạo kênh:', err);
+      if (!error && data) {
+        setChannels((prev) => [...prev, data as Channel]);
+        router.push(`/channels/${currentServer.id}/${data.id}`);
       }
-    }
-
-    // Demo Mode
-    if (isDemoMode) {
-      const newChan: Channel = {
-        id: `ch-${Date.now()}`,
-        server_id: currentServer.id,
-        name,
-        type,
-        topic: topic || null,
-        created_at: new Date().toISOString(),
-      };
-
-      setChannels((prev) => [...prev, newChan]);
-      setActiveChannel(newChan);
-      router.push(`/channels/${currentServer.id}/${newChan.id}`);
+    } catch (err) {
+      console.error('Lỗi tạo kênh:', err);
     }
   };
 
@@ -323,6 +251,7 @@ export default function ServerChannelPage({ params }: PageProps) {
         onOpenCreateChannel={() => setCreateChannelOpen(true)}
         onOpenInvite={() => setInviteOpen(true)}
         onOpenUserSettings={() => setUserSettingsOpen(true)}
+        onOpenServerSettings={() => setServerSettingsOpen(true)}
         onDisconnectVoice={handleDisconnectVoice}
       />
 
@@ -381,6 +310,22 @@ export default function ServerChannelPage({ params }: PageProps) {
       <UserSettingsModal
         isOpen={userSettingsOpen}
         onClose={() => setUserSettingsOpen(false)}
+      />
+
+      <ServerSettingsModal
+        isOpen={serverSettingsOpen}
+        onClose={() => setServerSettingsOpen(false)}
+        server={currentServer}
+        channels={channels}
+        members={members}
+        onUpdateServer={(updated) => {
+          setCurrentServer((prev) => (prev ? { ...prev, ...updated } : prev));
+        }}
+        onDeleteServer={() => {
+          router.push('/channels/me');
+        }}
+        onChannelUpdated={fetchServerData}
+        onMembersUpdated={fetchServerData}
       />
     </div>
   );

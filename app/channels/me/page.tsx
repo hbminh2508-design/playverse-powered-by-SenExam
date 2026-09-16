@@ -18,40 +18,12 @@ import {
 import Link from 'next/link';
 
 export default function DirectMessagesPage() {
-  const { profile, isConfigured, isDemoMode } = useAuth();
+  const { profile, isConfigured } = useAuth();
   const [activeTab, setActiveTab] = useState<'online' | 'all' | 'add'>('online');
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  // CHỈ HIỂN THỊ DANH SÁCH DEMO KHI Ở CHẾ ĐỘ DEMO
-  // Khi đăng nhập tài khoản thật -> TUYỆT ĐỐI KHÔNG HIỂN THỊ BẤT KỲ DATA DEMO NÀO
-  const demoFriends = [
-    {
-      id: 'fr-1',
-      name: 'Alex Nguyễn',
-      tag: 'alex#1024',
-      status: 'idle',
-      activity: 'AFK ăn trưa 🍜',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=alex',
-    },
-    {
-      id: 'fr-2',
-      name: 'Linh Chi',
-      tag: 'linhchi#2048',
-      status: 'online',
-      activity: 'Nghe nhạc Chill 🎧',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=linh',
-    },
-    {
-      id: 'fr-3',
-      name: 'Minh Dev',
-      tag: 'minhtech#4096',
-      status: 'dnd',
-      activity: 'Đang fix bug, đừng tag 🛑',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=minh',
-    },
-  ];
-
-  const friends = isDemoMode ? demoFriends : [];
+  // Không sử dụng dữ liệu ảo, chỉ hiển thị dữ liệu thật
+  const friends: any[] = [];
 
   return (
     <div className="flex h-full w-full bg-[#313338] text-[#dbdee1] overflow-x-hidden">

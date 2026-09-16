@@ -10,8 +10,6 @@ interface AuthContextType {
   profile: Profile | null;
   loading: boolean;
   isConfigured: boolean;
-  isDemoMode: boolean;
-  setDemoMode: (val: boolean) => void;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -22,7 +20,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isDemoMode, setIsDemoMode] = useState(false);
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const isConfigured = Boolean(
@@ -49,18 +46,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isConfigured) {
-      // Nếu chưa cấu hình Supabase, kích hoạt Demo Profile để user test giao diện ngay
-      setIsDemoMode(true);
-      setProfile({
-        id: 'demo-user-001',
-        username: 'PlayVerseUser',
-        display_name: 'Người Chơi Vũ Trụ',
-        avatar_url: 'https://api.dicebear.com/7.x/bottts/svg?seed=playverse',
-        status: 'online',
-        custom_status: 'Khám phá PlayVerse!',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      });
+      setUser(null);
+      setProfile(null);
       setLoading(false);
       return;
     }
@@ -70,7 +57,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
           setUser(session.user);
-          setIsDemoMode(false);
           await fetchProfile(session.user.id);
         }
       } catch (err) {
@@ -86,7 +72,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (event, session) => {
         if (session?.user) {
           setUser(session.user);
-          setIsDemoMode(false);
           await fetchProfile(session.user.id);
         } else {
           setUser(null);
@@ -107,7 +92,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     setUser(null);
     setProfile(null);
-    setIsDemoMode(false);
   };
 
   const refreshProfile = async () => {
@@ -123,8 +107,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         profile,
         loading,
         isConfigured,
-        isDemoMode,
-        setDemoMode: setIsDemoMode,
         signOut,
         refreshProfile,
       }}

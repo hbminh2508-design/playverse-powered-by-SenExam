@@ -2,7 +2,6 @@
 
 import React, { use, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { DEMO_SERVERS } from '@/lib/demo-data';
 import { Users, Compass, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/context/auth-context';
@@ -19,7 +18,7 @@ export default function InvitePage({ params }: InvitePageProps) {
   const resolvedParams = use(params);
   const { code } = resolvedParams;
   const router = useRouter();
-  const { user, isConfigured, isDemoMode } = useAuth();
+  const { user, isConfigured } = useAuth();
   const [server, setServer] = useState<Server | null>(null);
   const [memberCount, setMemberCount] = useState<number>(1);
   const [loading, setLoading] = useState(true);
@@ -31,18 +30,7 @@ export default function InvitePage({ params }: InvitePageProps) {
     const fetchServerByInvite = async () => {
       setLoading(true);
 
-      // Chế độ Demo
-      if (isDemoMode) {
-        const demoMatch = DEMO_SERVERS.find(
-          (s) => s.invite_code.toUpperCase() === code.toUpperCase()
-        ) || DEMO_SERVERS[0];
-        setServer(demoMatch);
-        setMemberCount(5);
-        setLoading(false);
-        return;
-      }
-
-      // CHẾ ĐỘ THẬT: Tìm kiếm server theo mã mời trên Supabase
+      // Tìm kiếm server theo mã mời trên Supabase
       if (isConfigured) {
         try {
           const { data, error } = await supabase
@@ -77,13 +65,13 @@ export default function InvitePage({ params }: InvitePageProps) {
     };
 
     fetchServerByInvite();
-  }, [code, isConfigured, isDemoMode]);
+  }, [code, isConfigured]);
 
   const handleAccept = async () => {
     if (!server) return;
     setJoining(true);
 
-    if (isConfigured && user && !isDemoMode) {
+    if (isConfigured && user) {
       try {
         // Kiểm tra xem đã là thành viên chưa
         const { data: existing } = await supabase

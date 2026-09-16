@@ -27,6 +27,7 @@ interface ChannelSidebarProps {
   onOpenCreateChannel: () => void;
   onOpenInvite: () => void;
   onOpenUserSettings: () => void;
+  onOpenServerSettings?: () => void;
   onDisconnectVoice?: () => void;
 }
 
@@ -38,6 +39,7 @@ export function ChannelSidebar({
   onOpenCreateChannel,
   onOpenInvite,
   onOpenUserSettings,
+  onOpenServerSettings,
   onDisconnectVoice,
 }: ChannelSidebarProps) {
   const { profile } = useAuth();
@@ -90,6 +92,18 @@ export function ChannelSidebar({
               <span>Tạo kênh</span>
               <Plus size={16} />
             </button>
+            {onOpenServerSettings && (
+              <button
+                onClick={() => {
+                  setDropdownOpen(false);
+                  onOpenServerSettings();
+                }}
+                className="flex items-center justify-between px-2.5 py-2 rounded text-[#949ba4] hover:bg-[#5865f2] hover:text-white transition cursor-pointer"
+              >
+                <span>Cài đặt máy chủ</span>
+                <Settings size={16} />
+              </button>
+            )}
             <div className="h-[1px] bg-[#232428] my-1" />
             <button
               onClick={() => {

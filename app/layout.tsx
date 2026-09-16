@@ -17,7 +17,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="vi" className="dark">
-      <body className="h-screen w-screen overflow-hidden bg-[#1e1f22] text-[#dbdee1] antialiased">
+      <body className="min-h-screen bg-[#1e1f22] text-[#dbdee1] antialiased">
         <AuthProvider>
           {children}
         </AuthProvider>

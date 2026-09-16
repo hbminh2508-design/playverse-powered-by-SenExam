@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth-context';
 import { createClient } from '@/lib/supabase/client';
+import { PlayVerseLogo } from '@/components/ui/logo';
 import {
   Download,
   Monitor,
@@ -26,7 +27,7 @@ import {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, profile, isConfigured, setDemoMode } = useAuth();
+  const { user, profile, isConfigured } = useAuth();
 
   // Auth widget states
   const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
@@ -48,8 +49,7 @@ export default function DashboardPage() {
 
     try {
       if (!isConfigured) {
-        setDemoMode(true);
-        router.push('/channels/me');
+        setAuthError('Hệ thống chưa kết nối Supabase API keys. Vui lòng cấu hình trên Vercel / .env.local.');
         return;
       }
 
@@ -88,9 +88,12 @@ export default function DashboardPage() {
     }
   };
 
-  const handleDemo = () => {
-    setDemoMode(true);
-    router.push('/channels/me');
+  const scrollTo = (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   return (
@@ -99,25 +102,19 @@ export default function DashboardPage() {
       <header className="sticky top-0 z-50 bg-[#1e1f22]/90 backdrop-blur-md border-b border-[#2b2d31] px-6 py-3.5">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-2xl bg-[#5865f2] flex items-center justify-center font-black text-white text-xl shadow-lg shadow-[#5865f2]/30 group-hover:scale-105 transition">
-              PV
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xl font-extrabold text-white tracking-wide">PlayVerse</span>
-              <span className="text-[10px] text-[#23a55a] font-semibold -mt-1">Powered by SenExam</span>
-            </div>
+          <Link href="/" className="hover:opacity-90 transition">
+            <PlayVerseLogo size="md" />
           </Link>
 
           {/* Navigation Links */}
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-[#949ba4]">
-            <a href="#features" className="hover:text-white transition">Tính năng</a>
-            <a href="#showcase" className="hover:text-white transition">Giao diện</a>
-            <a href="#download" className="hover:text-white transition flex items-center gap-1.5 text-white">
+            <a href="#features" onClick={(e) => scrollTo(e, 'features')} className="hover:text-white transition cursor-pointer">Tính năng</a>
+            <a href="#showcase" onClick={(e) => scrollTo(e, 'showcase')} className="hover:text-white transition cursor-pointer">Giao diện</a>
+            <a href="#download" onClick={(e) => scrollTo(e, 'download')} className="hover:text-white transition flex items-center gap-1.5 text-white cursor-pointer">
               <Download size={15} className="text-[#5865f2]" />
               <span>Tải Windows (.exe)</span>
             </a>
-            <a href="#auth" className="hover:text-white transition">Đăng nhập</a>
+            <a href="#auth" onClick={(e) => scrollTo(e, 'auth')} className="hover:text-white transition cursor-pointer">Đăng nhập</a>
           </nav>
 
           {/* Right Action */}
@@ -134,7 +131,8 @@ export default function DashboardPage() {
               <>
                 <a
                   href="#auth"
-                  className="text-xs font-semibold text-white hover:underline px-3 py-2 hidden sm:inline"
+                  onClick={(e) => scrollTo(e, 'auth')}
+                  className="text-xs font-semibold text-white hover:underline px-3 py-2 hidden sm:inline cursor-pointer"
                 >
                   Đăng Nhập
                 </a>
@@ -156,13 +154,7 @@ export default function DashboardPage() {
         <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-[#5865f2]/15 rounded-full blur-[120px] pointer-events-none" />
         <div className="absolute top-40 right-10 w-[400px] h-[400px] bg-[#23a55a]/10 rounded-full blur-[140px] pointer-events-none" />
 
-        <div className="max-w-5xl mx-auto text-center relative z-10">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#5865f2]/15 text-[#5865f2] text-xs font-bold mb-6 border border-[#5865f2]/30 shadow-sm">
-            <Sparkles size={14} />
-            <span>PlayVerse v1.0.0 • Tự chủ dữ liệu 100% trên tên miền playverse.senexam.me</span>
-          </div>
-
+        <div className="max-w-5xl mx-auto text-center relative z-10 pt-4">
           {/* Heading */}
           <h1 className="text-4xl sm:text-6xl md:text-7xl font-black text-white tracking-tight leading-[1.1] mb-6">
             Nơi Tụ Họp Cộng Đồng & <br />
@@ -426,18 +418,6 @@ export default function DashboardPage() {
                   : 'Đăng Nhập'}
               </button>
             </form>
-
-            {/* Fast Demo Mode */}
-            <div className="mt-6 pt-6 border-t border-[#3f4147] text-center">
-              <button
-                type="button"
-                onClick={handleDemo}
-                className="w-full bg-[#23a55a] hover:bg-[#1f9250] text-white font-semibold py-2.5 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer text-xs shadow"
-              >
-                <Sparkles size={16} />
-                <span>Trải Nghiệm Ngay (Chế Độ Demo Không Cần Tài Khoản)</span>
-              </button>
-            </div>
           </div>
         </div>
       </section>
@@ -543,11 +523,7 @@ export default function DashboardPage() {
       {/* 7. FOOTER */}
       <footer className="mt-auto bg-[#18191c] border-t border-[#2b2d31] px-6 py-8">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#949ba4]">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-[#5865f2] text-white flex items-center justify-center font-bold text-[10px]">PV</div>
-            <span className="font-semibold text-white">PlayVerse Community Platform</span>
-            <span>• Powered by SenExam</span>
-          </div>
+          <PlayVerseLogo size="sm" />
           <div>
             Tên miền chính thức: <strong className="text-white">playverse.senexam.me</strong>
           </div>

@@ -2,7 +2,6 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Windows.Forms;
-using System.Drawing;
 
 namespace PlayVerse
 {
@@ -15,56 +14,60 @@ namespace PlayVerse
             Application.SetCompatibleTextRenderingDefault(false);
 
             string targetUrl = "https://playverse.senexam.me";
-
-            DialogResult result = MessageBox.Show(
-                "Chào mừng bạn đến với PlayVerse (Discord-like Community App)!\n\n" +
-                "Bạn có muốn khởi chạy PlayVerse ở chế độ Ứng Dụng Desktop không?\n\n" +
-                "• Nhấn 'Yes' để mở ứng dụng PlayVerse ngay lập tức.\n" +
-                "• Nhấn 'No' để tạo biểu tượng PlayVerse trên Màn hình chính (Desktop).",
-                "PlayVerse for Windows Setup v1.0.0",
-                MessageBoxButtons.YesNoCancel,
-                MessageBoxIcon.Information
+            string appDataDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "PlayVerseApp"
             );
 
-            if (result == DialogResult.Yes)
-            {
-                LaunchApp(targetUrl);
-            }
-            else if (result == DialogResult.No)
-            {
-                CreateDesktopShortcut(targetUrl);
-                MessageBox.Show(
-                    "Đã tạo lối tắt PlayVerse trên Màn hình Desktop thành công!\nBạn có thể khởi chạy ứng dụng bất kỳ lúc nào.",
-                    "PlayVerse Setup",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information
-                );
-                LaunchApp(targetUrl);
-            }
-        }
-
-        static void LaunchApp(string url)
-        {
             try
             {
-                // Thử mở bằng Edge ở chế độ App Window (không thanh địa chỉ, giống Discord thật)
-                string edgePath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
-                    @"Microsoft\Edge\Application\msedge.exe"
-                );
-
-                if (File.Exists(edgePath))
+                if (!Directory.Exists(appDataDir))
                 {
-                    Process.Start(new ProcessStartInfo
-                    {
-                        FileName = edgePath,
-                        Arguments = "--app=" + url + " --window-size=1280,800",
-                        UseShellExecute = true
-                    });
-                    return;
+                    Directory.CreateDirectory(appDataDir);
                 }
             }
             catch { }
+
+            // Tạo shortcut ngoài Desktop tự động nếu chưa có
+            CreateDesktopShortcut(targetUrl);
+
+            // Mở ứng dụng PlayVerse ở chế độ Desktop Window chuyên biệt
+            LaunchApp(targetUrl, appDataDir);
+        }
+
+        static void LaunchApp(string url, string dataDir)
+        {
+            // Danh sách các executable Chromium hỗ trợ chế độ --app
+            string[] possibleBrowsers = new string[]
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), @"Microsoft\Edge\Application\msedge.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), @"Microsoft\Edge\Application\msedge.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), @"Google\Chrome\Application\chrome.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), @"Google\Chrome\Application\chrome.exe"),
+            };
+
+            foreach (string exe in possibleBrowsers)
+            {
+                if (File.Exists(exe))
+                {
+                    try
+                    {
+                        ProcessStartInfo psi = new ProcessStartInfo
+                        {
+                            FileName = exe,
+                            Arguments = string.Format(
+                                "--app={0} --window-size=1280,820 --user-data-dir=\"{1}\" --enable-features=WebRtcHideLocalIpsWithMdns,OverlayScrollbar",
+                                url,
+                                dataDir
+                            ),
+                            UseShellExecute = true
+                        };
+                        Process.Start(psi);
+                        return;
+                    }
+                    catch { }
+                }
+            }
 
             // Fallback mở trình duyệt mặc định
             try
@@ -77,7 +80,12 @@ namespace PlayVerse
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Lỗi khởi chạy: " + ex.Message);
+                MessageBox.Show(
+                    "Không thể khởi chạy ứng dụng PlayVerse: " + ex.Message,
+                    "PlayVerse Lỗi",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
             }
         }
 
@@ -87,11 +95,14 @@ namespace PlayVerse
             {
                 string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
                 string shortcutPath = Path.Combine(desktopPath, "PlayVerse.url");
-                using (StreamWriter writer = new StreamWriter(shortcutPath))
+                if (!File.Exists(shortcutPath))
                 {
-                    writer.WriteLine("[InternetShortcut]");
-                    writer.WriteLine("URL=" + url);
-                    writer.WriteLine("IconIndex=0");
+                    using (StreamWriter writer = new StreamWriter(shortcutPath))
+                    {
+                        writer.WriteLine("[InternetShortcut]");
+                        writer.WriteLine("URL=" + url);
+                        writer.WriteLine("IconIndex=0");
+                    }
                 }
             }
             catch { }

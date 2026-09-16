@@ -6,7 +6,6 @@ import { CreateServerModal } from '@/components/modals/create-server-modal';
 import { Server } from '@/types/database';
 import { useAuth } from '@/lib/context/auth-context';
 import { createClient } from '@/lib/supabase/client';
-import { DEMO_SERVERS } from '@/lib/demo-data';
 import { useRouter } from 'next/navigation';
 
 export default function ChannelsLayout({
@@ -14,7 +13,7 @@ export default function ChannelsLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, isConfigured, isDemoMode } = useAuth();
+  const { user, isConfigured } = useAuth();
   const router = useRouter();
   const [servers, setServers] = useState<Server[]>([]);
   const [createServerOpen, setCreateServerOpen] = useState(false);
@@ -22,13 +21,7 @@ export default function ChannelsLayout({
   const supabase = createClient();
 
   useEffect(() => {
-    // Nếu ở chế độ Demo rõ ràng -> dùng DEMO_SERVERS
-    if (isDemoMode) {
-      setServers(DEMO_SERVERS);
-      return;
-    }
-
-    // Nếu là người dùng thật đã đăng nhập Supabase -> TUYỆT ĐỐI CHỈ DÙNG DỮ LIỆU THẬT TỪ SUPABASE
+    // Chỉ dùng dữ liệu thật từ Supabase
     if (isConfigured && user) {
       const fetchServers = async () => {
         try {
@@ -56,12 +49,12 @@ export default function ChannelsLayout({
     }
 
     setServers([]);
-  }, [isConfigured, user, isDemoMode]);
+  }, [isConfigured, user]);
 
   const handleCreateServer = async (name: string, iconUrl?: string) => {
     const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
-    if (isConfigured && user && !isDemoMode) {
+    if (isConfigured && user) {
       try {
         const { data, error } = await supabase
           .from('servers')
@@ -82,21 +75,6 @@ export default function ChannelsLayout({
       } catch (err) {
         console.error('Lỗi tạo server trên Supabase:', err);
       }
-    }
-
-    // Demo Mode chỉ khi người dùng chọn Demo
-    if (isDemoMode) {
-      const newServer: Server = {
-        id: `server-${Date.now()}`,
-        name,
-        icon_url: iconUrl || null,
-        invite_code: inviteCode,
-        owner_id: user?.id || 'demo-user-001',
-        created_at: new Date().toISOString(),
-      };
-
-      setServers((prev) => [...prev, newServer]);
-      router.push(`/channels/${newServer.id}/default`);
     }
   };
 
