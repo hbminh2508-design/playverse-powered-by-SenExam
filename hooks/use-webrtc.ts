@@ -16,7 +16,7 @@ export interface Participant {
 }
 
 export function useWebRTC(channelId: string | null) {
-  const { profile, isConfigured } = useAuth();
+  const { profile, isConfigured, isDemoMode } = useAuth();
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOn, setIsVideoOn] = useState(false);
@@ -85,36 +85,48 @@ export function useWebRTC(channelId: string | null) {
     // Start local audio
     startLocalAudio();
 
-    // Default participants list with local user and sample room peers
-    const initialParticipants: Participant[] = [
-      {
-        id: profile.id,
-        name: profile.display_name || profile.username || 'Bạn',
-        avatarUrl: profile.avatar_url || 'https://api.dicebear.com/7.x/bottts/svg?seed=playverse',
-        isMuted: false,
-        isVideoOn: false,
-        isScreenSharing: false,
-        isSpeaking: false,
-      },
-      {
-        id: 'peer-alex',
-        name: 'Alex Nguyễn',
-        avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=alex',
-        isMuted: false,
-        isVideoOn: true,
-        isScreenSharing: false,
-        isSpeaking: false,
-      },
-      {
-        id: 'peer-linh',
-        name: 'Linh Chi',
-        avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=linh',
-        isMuted: true,
-        isVideoOn: false,
-        isScreenSharing: false,
-        isSpeaking: false,
-      },
-    ];
+    // Default participants list: Trong chế độ THẬT chỉ có người dùng hiện tại, không có fake demo
+    const initialParticipants: Participant[] = isDemoMode
+      ? [
+          {
+            id: profile.id,
+            name: profile.display_name || profile.username || 'Bạn',
+            avatarUrl: profile.avatar_url || 'https://api.dicebear.com/7.x/bottts/svg?seed=playverse',
+            isMuted: false,
+            isVideoOn: false,
+            isScreenSharing: false,
+            isSpeaking: false,
+          },
+          {
+            id: 'peer-alex',
+            name: 'Alex Nguyễn',
+            avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=alex',
+            isMuted: false,
+            isVideoOn: true,
+            isScreenSharing: false,
+            isSpeaking: false,
+          },
+          {
+            id: 'peer-linh',
+            name: 'Linh Chi',
+            avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=linh',
+            isMuted: true,
+            isVideoOn: false,
+            isScreenSharing: false,
+            isSpeaking: false,
+          },
+        ]
+      : [
+          {
+            id: profile.id,
+            name: profile.display_name || profile.username || 'Bạn',
+            avatarUrl: profile.avatar_url || 'https://api.dicebear.com/7.x/bottts/svg?seed=playverse',
+            isMuted: false,
+            isVideoOn: false,
+            isScreenSharing: false,
+            isSpeaking: false,
+          },
+        ];
     setParticipants(initialParticipants);
 
     // Setup Supabase Realtime Signaling if configured

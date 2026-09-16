@@ -13,15 +13,18 @@ import {
   Mic,
   Headphones,
   Plus,
+  UserPlus,
 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function DirectMessagesPage() {
-  const { profile, isConfigured } = useAuth();
+  const { profile, isConfigured, isDemoMode } = useAuth();
   const [activeTab, setActiveTab] = useState<'online' | 'all' | 'add'>('online');
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  const friends = [
+  // CHỈ HIỂN THỊ DANH SÁCH DEMO KHI Ở CHẾ ĐỘ DEMO
+  // Khi đăng nhập tài khoản thật -> TUYỆT ĐỐI KHÔNG HIỂN THỊ BẤT KỲ DATA DEMO NÀO
+  const demoFriends = [
     {
       id: 'fr-1',
       name: 'Alex Nguyễn',
@@ -48,20 +51,22 @@ export default function DirectMessagesPage() {
     },
   ];
 
+  const friends = isDemoMode ? demoFriends : [];
+
   return (
-    <div className="flex h-full w-full bg-[#313338] text-[#dbdee1]">
+    <div className="flex h-full w-full bg-[#313338] text-[#dbdee1] overflow-x-hidden">
       {/* Me Left Sidebar (240px) */}
-      <aside className="w-60 bg-[#2b2d31] flex flex-col h-full border-r border-[#1f2023]/40 select-none shrink-0">
+      <aside className="w-60 bg-[#2b2d31] flex flex-col h-full border-r border-[#1f2023]/40 select-none shrink-0 overflow-x-hidden">
         {/* Search header */}
-        <div className="h-12 border-b border-[#1f2023] px-3 flex items-center shadow-sm">
+        <div className="h-12 border-b border-[#1f2023] px-3 flex items-center shadow-sm shrink-0">
           <button className="w-full bg-[#1e1f22] text-[#949ba4] text-xs px-2 py-1.5 rounded flex items-center justify-between hover:text-white transition">
-            <span>Tìm kiếm hoặc bắt đầu trò chuyện</span>
+            <span>Tìm kiếm trò chuyện</span>
             <Search size={14} />
           </button>
         </div>
 
         {/* Navigation list */}
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-1">
           <button
             onClick={() => setActiveTab('online')}
             className="w-full flex items-center gap-4 px-3 py-2 rounded-md bg-[#404249] text-white text-sm font-medium transition cursor-pointer"
@@ -72,44 +77,50 @@ export default function DirectMessagesPage() {
 
           <div className="pt-4 px-3 flex items-center justify-between text-[11px] font-bold text-[#949ba4] uppercase tracking-wider">
             <span>Tin nhắn trực tiếp</span>
-            <button className="hover:text-white transition">
+            <button onClick={() => setActiveTab('add')} className="hover:text-white transition cursor-pointer" title="Thêm bạn">
               <Plus size={14} />
             </button>
           </div>
 
           <div className="space-y-0.5 mt-1">
-            {friends.map((f) => (
-              <div
-                key={f.id}
-                className="flex items-center gap-3 px-2 py-1.5 rounded-md hover:bg-[#35373c] text-[#949ba4] hover:text-[#dbdee1] transition cursor-pointer group"
-              >
-                <div className="relative shrink-0">
-                  <img
-                    src={f.avatar}
-                    alt={f.name}
-                    className="w-8 h-8 rounded-full bg-[#1e1f22] object-cover"
-                  />
-                  <div
-                    className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-[#2b2d31] ${
-                      f.status === 'online'
-                        ? 'bg-[#23a55a]'
-                        : f.status === 'idle'
-                        ? 'bg-[#f0b232]'
-                        : 'bg-[#f23f43]'
-                    }`}
-                  />
+            {friends.length === 0 ? (
+              <p className="text-xs text-[#949ba4] px-3 py-2 italic">
+                Chưa có tin nhắn trực tiếp nào
+              </p>
+            ) : (
+              friends.map((f) => (
+                <div
+                  key={f.id}
+                  className="flex items-center gap-3 px-2 py-1.5 rounded-md hover:bg-[#35373c] text-[#949ba4] hover:text-[#dbdee1] transition cursor-pointer group"
+                >
+                  <div className="relative shrink-0">
+                    <img
+                      src={f.avatar}
+                      alt={f.name}
+                      className="w-8 h-8 rounded-full bg-[#1e1f22] object-cover"
+                    />
+                    <div
+                      className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-[#2b2d31] ${
+                        f.status === 'online'
+                          ? 'bg-[#23a55a]'
+                          : f.status === 'idle'
+                          ? 'bg-[#f0b232]'
+                          : 'bg-[#f23f43]'
+                      }`}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-white truncate">{f.name}</div>
+                    <div className="text-[11px] text-[#949ba4] truncate">{f.activity}</div>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-white truncate">{f.name}</div>
-                  <div className="text-[11px] text-[#949ba4] truncate">{f.activity}</div>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
         {/* Bottom User Profile Bar */}
-        <div className="h-14 bg-[#232428] px-2 flex items-center justify-between gap-1">
+        <div className="h-14 bg-[#232428] px-2 flex items-center justify-between gap-1 shrink-0 border-t border-[#1f2023]/60">
           <div
             onClick={() => setSettingsOpen(true)}
             className="flex items-center gap-2 p-1 rounded-md hover:bg-[#35373c] transition cursor-pointer flex-1 min-w-0"
@@ -129,10 +140,11 @@ export default function DirectMessagesPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-0.5 text-[#b5bac1]">
+          <div className="flex items-center gap-0.5 text-[#b5bac1] shrink-0">
             <button
               onClick={() => setSettingsOpen(true)}
               className="p-1.5 rounded hover:bg-[#35373c] hover:text-white transition cursor-pointer"
+              title="Cài đặt người dùng"
             >
               <Settings size={18} />
             </button>
@@ -141,9 +153,9 @@ export default function DirectMessagesPage() {
       </aside>
 
       {/* Main Me Content */}
-      <main className="flex-1 flex flex-col h-full bg-[#313338] min-w-0">
+      <main className="flex-1 flex flex-col h-full bg-[#313338] min-w-0 overflow-x-hidden">
         {/* Header Tabs */}
-        <header className="h-12 border-b border-[#1f2023] px-6 flex items-center justify-between shadow-sm shrink-0">
+        <header className="h-12 border-b border-[#1f2023] px-6 flex items-center justify-between shadow-sm shrink-0 bg-[#2b2d31]">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-white font-semibold pr-3 border-r border-[#4e5058]/40">
               <Users size={20} className="text-[#80848e]" />
@@ -152,7 +164,7 @@ export default function DirectMessagesPage() {
             <div className="flex items-center gap-2 text-sm font-medium">
               <button
                 onClick={() => setActiveTab('online')}
-                className={`px-2 py-1 rounded transition ${
+                className={`px-2 py-1 rounded transition cursor-pointer ${
                   activeTab === 'online'
                     ? 'bg-[#404249] text-white'
                     : 'text-[#b5bac1] hover:bg-[#35373c]'
@@ -162,17 +174,17 @@ export default function DirectMessagesPage() {
               </button>
               <button
                 onClick={() => setActiveTab('all')}
-                className={`px-2 py-1 rounded transition ${
+                className={`px-2 py-1 rounded transition cursor-pointer ${
                   activeTab === 'all'
                     ? 'bg-[#404249] text-white'
                     : 'text-[#b5bac1] hover:bg-[#35373c]'
                 }`}
               >
-                Tất cả
+                Tất cả ({friends.length})
               </button>
               <button
                 onClick={() => setActiveTab('add')}
-                className={`px-2.5 py-0.5 rounded text-white font-medium transition ${
+                className={`px-2.5 py-0.5 rounded text-white font-medium transition cursor-pointer ${
                   activeTab === 'add'
                     ? 'bg-[#23a55a] text-white'
                     : 'bg-[#23a55a] hover:bg-[#1f9250]'
@@ -185,7 +197,7 @@ export default function DirectMessagesPage() {
         </header>
 
         {/* Tab Body */}
-        <div className="flex-1 p-6 overflow-y-auto">
+        <div className="flex-1 p-6 overflow-y-auto overflow-x-hidden">
           {activeTab === 'add' ? (
             <div className="max-w-xl">
               <h2 className="text-base font-bold text-white uppercase tracking-wider mb-2">
@@ -197,16 +209,32 @@ export default function DirectMessagesPage() {
               <div className="flex items-center bg-[#1e1f22] rounded-lg p-2 border border-[#232428]">
                 <input
                   type="text"
-                  placeholder="Bạn có thể thêm bạn bằng tên người dùng PlayVerse"
+                  placeholder="Nhập tên người dùng PlayVerse..."
                   className="flex-1 bg-transparent text-sm text-white px-3 outline-none"
                 />
                 <button
                   onClick={() => alert('Đã gửi lời mời kết bạn!')}
-                  className="bg-[#5865f2] hover:bg-[#4752c4] text-white text-xs font-semibold px-4 py-2 rounded transition"
+                  className="bg-[#5865f2] hover:bg-[#4752c4] text-white text-xs font-semibold px-4 py-2 rounded transition cursor-pointer"
                 >
                   Gửi yêu cầu
                 </button>
               </div>
+            </div>
+          ) : friends.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-80 text-center text-[#949ba4]">
+              <div className="w-16 h-16 rounded-full bg-[#2b2d31] flex items-center justify-center mb-4 text-[#5865f2]">
+                <UserPlus size={32} />
+              </div>
+              <h3 className="text-base font-semibold text-white mb-1">Chưa có bạn bè nào trực tuyến</h3>
+              <p className="text-xs max-w-sm mb-4">
+                Hãy thêm bạn bè bằng tên người dùng PlayVerse hoặc chia sẻ mã mời máy chủ của bạn!
+              </p>
+              <button
+                onClick={() => setActiveTab('add')}
+                className="bg-[#5865f2] hover:bg-[#4752c4] text-white text-xs font-semibold px-5 py-2.5 rounded-md transition cursor-pointer shadow"
+              >
+                Thêm bạn bè ngay
+              </button>
             </div>
           ) : (
             <div>
@@ -248,7 +276,7 @@ export default function DirectMessagesPage() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => alert(`Bắt đầu chat với ${f.name}`)}
-                        className="w-9 h-9 rounded-full bg-[#2b2d31] flex items-center justify-center text-[#b5bac1] hover:text-white hover:bg-[#1e1f22] transition"
+                        className="w-9 h-9 rounded-full bg-[#2b2d31] flex items-center justify-center text-[#b5bac1] hover:text-white hover:bg-[#1e1f22] transition cursor-pointer"
                         title="Gửi tin nhắn"
                       >
                         <MessageSquare size={18} />

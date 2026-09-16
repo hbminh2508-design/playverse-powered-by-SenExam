@@ -70,6 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
           setUser(session.user);
+          setIsDemoMode(false);
           await fetchProfile(session.user.id);
         }
       } catch (err) {
@@ -85,6 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (event, session) => {
         if (session?.user) {
           setUser(session.user);
+          setIsDemoMode(false);
           await fetchProfile(session.user.id);
         } else {
           setUser(null);

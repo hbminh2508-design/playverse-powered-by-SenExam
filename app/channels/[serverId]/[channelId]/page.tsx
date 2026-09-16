@@ -19,6 +19,7 @@ import {
   DEMO_MEMBERS,
   DEMO_MESSAGES,
 } from '@/lib/demo-data';
+import { Compass, Hash } from 'lucide-react';
 
 interface PageProps {
   params: Promise<{
@@ -31,7 +32,7 @@ export default function ServerChannelPage({ params }: PageProps) {
   const resolvedParams = use(params);
   const { serverId, channelId } = resolvedParams;
 
-  const { user, profile, isConfigured } = useAuth();
+  const { user, profile, isConfigured, isDemoMode } = useAuth();
   const router = useRouter();
 
   // State
@@ -40,6 +41,7 @@ export default function ServerChannelPage({ params }: PageProps) {
   const [activeChannel, setActiveChannel] = useState<Channel | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [members, setMembers] = useState<ServerMember[]>([]);
+  const [loadingServer, setLoadingServer] = useState(true);
 
   // UI Modals State
   const [showMemberList, setShowMemberList] = useState(true);
@@ -56,91 +58,112 @@ export default function ServerChannelPage({ params }: PageProps) {
   // 1. Load Server & Channels
   useEffect(() => {
     const loadServerData = async () => {
-      // Find server
-      let s = DEMO_SERVERS.find((srv) => srv.id === serverId);
+      setLoadingServer(true);
 
-      if (isConfigured && !s) {
-        const { data } = await supabase
-          .from('servers')
-          .select('*')
-          .eq('id', serverId)
-          .single();
-        if (data) s = data as Server;
+      // Chế độ Demo
+      if (isDemoMode) {
+        let s = DEMO_SERVERS.find((srv) => srv.id === serverId) || DEMO_SERVERS[0];
+        setCurrentServer(s);
+        let chs = DEMO_CHANNELS[serverId] || DEMO_CHANNELS['server-playverse'] || [];
+        setChannels(chs);
+        let active = chs.find((c) => c.id === channelId) || chs.find((c) => c.type === 'text') || chs[0];
+        setActiveChannel(active || null);
+        let mems = DEMO_MEMBERS[serverId] || DEMO_MEMBERS['server-playverse'] || [];
+        setMembers(mems);
+        setLoadingServer(false);
+        return;
       }
 
-      if (!s) {
-        s = DEMO_SERVERS[0];
-      }
-      setCurrentServer(s);
+      // CHẾ ĐỘ THẬT (REAL SUPABASE): 100% DỮ LIỆU THẬT, KHÔNG DÙNG BẤT KỲ DEMO NÀO
+      if (isConfigured && user) {
+        try {
+          // A. Tìm máy chủ
+          const { data: serverData, error: serverErr } = await supabase
+            .from('servers')
+            .select('*')
+            .eq('id', serverId)
+            .single();
 
-      // Find channels
-      let chs = DEMO_CHANNELS[serverId] || DEMO_CHANNELS['server-playverse'];
+          if (serverErr || !serverData) {
+            setCurrentServer(null);
+            setChannels([]);
+            setActiveChannel(null);
+            setMembers([]);
+            setLoadingServer(false);
+            return;
+          }
 
-      if (isConfigured) {
-        const { data } = await supabase
-          .from('channels')
-          .select('*')
-          .eq('server_id', serverId)
-          .order('created_at', { ascending: true });
+          setCurrentServer(serverData as Server);
 
-        if (data && data.length > 0) {
-          chs = data as Channel[];
+          // B. Tải các kênh thật của server này
+          const { data: channelsData } = await supabase
+            .from('channels')
+            .select('*')
+            .eq('server_id', serverId)
+            .order('created_at', { ascending: true });
+
+          const realChannels = (channelsData || []) as Channel[];
+          setChannels(realChannels);
+
+          let active = realChannels.find((c) => c.id === channelId);
+          if (!active) {
+            active = realChannels.find((c) => c.type === 'text') || realChannels[0] || null;
+          }
+          setActiveChannel(active);
+
+          // C. Tải danh sách thành viên thật của server này
+          const { data: membersData } = await supabase
+            .from('server_members')
+            .select('*, profile:profiles(*)')
+            .eq('server_id', serverId);
+
+          setMembers((membersData || []) as ServerMember[]);
+        } catch (err) {
+          console.error('Lỗi tải dữ liệu máy chủ:', err);
+        } finally {
+          setLoadingServer(false);
         }
+        return;
       }
 
-      setChannels(chs);
-
-      // Determine active channel
-      let active = chs.find((c) => c.id === channelId);
-      if (!active) {
-        active = chs.find((c) => c.type === 'text') || chs[0];
-      }
-      setActiveChannel(active || null);
-
-      // Load Members
-      let mems = DEMO_MEMBERS[serverId] || DEMO_MEMBERS['server-playverse'];
-      if (isConfigured) {
-        const { data } = await supabase
-          .from('server_members')
-          .select('*, profile:profiles(*)')
-          .eq('server_id', serverId);
-
-        if (data && data.length > 0) {
-          mems = data as ServerMember[];
-        }
-      }
-      setMembers(mems);
+      setLoadingServer(false);
     };
 
     loadServerData();
-  }, [serverId, channelId, isConfigured]);
+  }, [serverId, channelId, isConfigured, isDemoMode, user]);
 
   // 2. Load Messages for Active Channel & Subscribe Realtime (if text channel)
   useEffect(() => {
     if (!activeChannel || activeChannel.type !== 'text') return;
 
-    let initialMessages = DEMO_MESSAGES[activeChannel.id] || [];
-
     const fetchMessages = async () => {
-      if (isConfigured) {
-        const { data } = await supabase
+      // Chế độ Demo
+      if (isDemoMode) {
+        let initialMessages = DEMO_MESSAGES[activeChannel.id] || [];
+        setMessages(initialMessages);
+        return;
+      }
+
+      // CHẾ ĐỘ THẬT: CHỈ LẤY TIN NHẮN TỪ SUPABASE
+      if (isConfigured && user) {
+        const { data, error } = await supabase
           .from('messages')
           .select('*, profile:profiles(*)')
           .eq('channel_id', activeChannel.id)
           .order('created_at', { ascending: true });
 
-        if (data && data.length > 0) {
+        if (!error && data) {
           setMessages(data as Message[]);
-          return;
+        } else {
+          setMessages([]);
         }
       }
-      setMessages(initialMessages);
     };
 
     fetchMessages();
 
     // Setup Supabase Realtime Subscription for chat
-    if (isConfigured) {
+    if (isConfigured && !isDemoMode) {
       const channelSub = supabase
         .channel(`chat:${activeChannel.id}`)
         .on(
@@ -172,26 +195,13 @@ export default function ServerChannelPage({ params }: PageProps) {
         supabase.removeChannel(channelSub);
       };
     }
-  }, [activeChannel, isConfigured]);
+  }, [activeChannel, isConfigured, isDemoMode, user]);
 
   // 3. Action Handlers
   const handleSendMessage = async (content: string, attachments: any[] = []) => {
     if (!activeChannel || !profile) return;
 
-    const newMessage: Message = {
-      id: `msg-${Date.now()}`,
-      channel_id: activeChannel.id,
-      profile_id: profile.id,
-      content,
-      attachments,
-      reply_to_id: null,
-      is_pinned: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      profile: profile,
-    };
-
-    if (isConfigured && user) {
+    if (isConfigured && user && !isDemoMode) {
       try {
         await supabase.from('messages').insert({
           channel_id: activeChannel.id,
@@ -206,13 +216,27 @@ export default function ServerChannelPage({ params }: PageProps) {
     }
 
     // Demo Mode: Local update
-    setMessages((prev) => [...prev, newMessage]);
+    if (isDemoMode) {
+      const newMessage: Message = {
+        id: `msg-${Date.now()}`,
+        channel_id: activeChannel.id,
+        profile_id: profile.id,
+        content,
+        attachments,
+        reply_to_id: null,
+        is_pinned: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        profile: profile,
+      };
+      setMessages((prev) => [...prev, newMessage]);
+    }
   };
 
   const handleCreateChannel = async (name: string, type: ChannelType, topic?: string) => {
     if (!currentServer) return;
 
-    if (isConfigured) {
+    if (isConfigured && user && !isDemoMode) {
       try {
         const { data, error } = await supabase
           .from('channels')
@@ -236,33 +260,54 @@ export default function ServerChannelPage({ params }: PageProps) {
     }
 
     // Demo Mode
-    const newChan: Channel = {
-      id: `ch-${Date.now()}`,
-      server_id: currentServer.id,
-      name,
-      type,
-      topic: topic || null,
-      created_at: new Date().toISOString(),
-    };
+    if (isDemoMode) {
+      const newChan: Channel = {
+        id: `ch-${Date.now()}`,
+        server_id: currentServer.id,
+        name,
+        type,
+        topic: topic || null,
+        created_at: new Date().toISOString(),
+      };
 
-    setChannels((prev) => [...prev, newChan]);
-    setActiveChannel(newChan);
-    router.push(`/channels/${currentServer.id}/${newChan.id}`);
+      setChannels((prev) => [...prev, newChan]);
+      setActiveChannel(newChan);
+      router.push(`/channels/${currentServer.id}/${newChan.id}`);
+    }
   };
 
   const handleDisconnectVoice = () => {
     webrtc.disconnect();
-    // Chuyển sang kênh chat text đầu tiên
     const defaultTextChannel = channels.find((c) => c.type === 'text') || channels[0];
     if (defaultTextChannel && currentServer) {
       router.push(`/channels/${currentServer.id}/${defaultTextChannel.id}`);
     }
   };
 
-  if (!currentServer || !activeChannel) {
+  if (loadingServer) {
     return (
       <div className="flex-1 flex items-center justify-center bg-[#313338] text-[#949ba4]">
         Đang tải máy chủ PlayVerse...
+      </div>
+    );
+  }
+
+  if (!currentServer) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center bg-[#313338] text-[#949ba4] p-6 text-center">
+        <div className="w-16 h-16 rounded-full bg-[#2b2d31] flex items-center justify-center mb-4 text-[#5865f2]">
+          <Compass size={36} />
+        </div>
+        <h2 className="text-xl font-bold text-white mb-2">Chưa tìm thấy máy chủ</h2>
+        <p className="text-sm max-w-md mb-6">
+          Máy chủ này không tồn tại hoặc bạn chưa tham gia. Hãy tạo máy chủ mới hoặc tham gia bằng mã mời!
+        </p>
+        <button
+          onClick={() => router.push('/channels/me')}
+          className="bg-[#5865f2] hover:bg-[#4752c4] text-white px-5 py-2.5 rounded-md text-sm font-medium transition cursor-pointer"
+        >
+          Về Trang Chủ / Bạn Bè
+        </button>
       </div>
     );
   }
@@ -273,7 +318,7 @@ export default function ServerChannelPage({ params }: PageProps) {
       <ChannelSidebar
         server={currentServer}
         channels={channels}
-        activeChannelId={activeChannel.id}
+        activeChannelId={activeChannel?.id || ''}
         activeVoiceChannel={isVoiceChannel ? activeChannel : null}
         onOpenCreateChannel={() => setCreateChannelOpen(true)}
         onOpenInvite={() => setInviteOpen(true)}
@@ -282,7 +327,19 @@ export default function ServerChannelPage({ params }: PageProps) {
       />
 
       {/* 2. Main Stage: Voice & Video Room HOẶC Chat Area */}
-      {isVoiceChannel ? (
+      {channels.length === 0 ? (
+        <div className="flex-1 flex flex-col items-center justify-center bg-[#313338] text-[#949ba4] p-6 text-center">
+          <Hash size={48} className="text-[#80848e] mb-3" />
+          <h2 className="text-lg font-bold text-white mb-1">Chưa có kênh nào trong máy chủ này</h2>
+          <p className="text-xs text-[#949ba4] mb-4">Hãy tạo kênh đầu tiên để bắt đầu trò chuyện!</p>
+          <button
+            onClick={() => setCreateChannelOpen(true)}
+            className="bg-[#5865f2] hover:bg-[#4752c4] text-white px-4 py-2 rounded-md text-xs font-semibold cursor-pointer"
+          >
+            Tạo kênh mới
+          </button>
+        </div>
+      ) : isVoiceChannel && activeChannel ? (
         <VoiceRoom
           channel={activeChannel}
           participants={webrtc.participants}
@@ -295,7 +352,7 @@ export default function ServerChannelPage({ params }: PageProps) {
           onToggleScreenShare={webrtc.toggleScreenShare}
           onDisconnect={handleDisconnectVoice}
         />
-      ) : (
+      ) : activeChannel ? (
         <ChatArea
           channel={activeChannel}
           messages={messages}
@@ -303,7 +360,7 @@ export default function ServerChannelPage({ params }: PageProps) {
           showMemberList={showMemberList}
           onToggleMemberList={() => setShowMemberList(!showMemberList)}
         />
-      )}
+      ) : null}
 
       {/* 3. Member Sidebar Right (240px) */}
       {showMemberList && <MemberSidebar members={members} />}

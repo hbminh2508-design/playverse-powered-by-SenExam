@@ -14,46 +14,54 @@ export default function ChannelsLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, isConfigured } = useAuth();
+  const { user, isConfigured, isDemoMode } = useAuth();
   const router = useRouter();
-  const [servers, setServers] = useState<Server[]>(DEMO_SERVERS);
+  const [servers, setServers] = useState<Server[]>([]);
   const [createServerOpen, setCreateServerOpen] = useState(false);
 
   const supabase = createClient();
 
   useEffect(() => {
-    if (!isConfigured || !user) {
+    // Nếu ở chế độ Demo rõ ràng -> dùng DEMO_SERVERS
+    if (isDemoMode) {
       setServers(DEMO_SERVERS);
       return;
     }
 
-    const fetchServers = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('server_members')
-          .select('server:servers(*)')
-          .eq('profile_id', user.id);
+    // Nếu là người dùng thật đã đăng nhập Supabase -> TUYỆT ĐỐI CHỈ DÙNG DỮ LIỆU THẬT TỪ SUPABASE
+    if (isConfigured && user) {
+      const fetchServers = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('server_members')
+            .select('server:servers(*)')
+            .eq('profile_id', user.id);
 
-        if (!error && data && data.length > 0) {
-          const userServers = data
-            .map((item: any) => item.server)
-            .filter(Boolean) as Server[];
-          setServers(userServers);
-        } else {
-          setServers(DEMO_SERVERS);
+          if (!error && data) {
+            const userServers = data
+              .map((item: any) => item.server)
+              .filter(Boolean) as Server[];
+            setServers(userServers);
+          } else {
+            setServers([]);
+          }
+        } catch (err) {
+          console.error('Lỗi tải danh sách server từ Supabase:', err);
+          setServers([]);
         }
-      } catch (err) {
-        console.error('Lỗi tải danh sách server:', err);
-      }
-    };
+      };
 
-    fetchServers();
-  }, [isConfigured, user]);
+      fetchServers();
+      return;
+    }
+
+    setServers([]);
+  }, [isConfigured, user, isDemoMode]);
 
   const handleCreateServer = async (name: string, iconUrl?: string) => {
     const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
-    if (isConfigured && user) {
+    if (isConfigured && user && !isDemoMode) {
       try {
         const { data, error } = await supabase
           .from('servers')
@@ -76,18 +84,20 @@ export default function ChannelsLayout({
       }
     }
 
-    // Demo Mode Fallback
-    const newServer: Server = {
-      id: `server-${Date.now()}`,
-      name,
-      icon_url: iconUrl || null,
-      invite_code: inviteCode,
-      owner_id: user?.id || 'demo-user-001',
-      created_at: new Date().toISOString(),
-    };
+    // Demo Mode chỉ khi người dùng chọn Demo
+    if (isDemoMode) {
+      const newServer: Server = {
+        id: `server-${Date.now()}`,
+        name,
+        icon_url: iconUrl || null,
+        invite_code: inviteCode,
+        owner_id: user?.id || 'demo-user-001',
+        created_at: new Date().toISOString(),
+      };
 
-    setServers((prev) => [...prev, newServer]);
-    router.push(`/channels/${newServer.id}/default`);
+      setServers((prev) => [...prev, newServer]);
+      router.push(`/channels/${newServer.id}/default`);
+    }
   };
 
   const handleJoinServer = async (inviteCode: string) => {
